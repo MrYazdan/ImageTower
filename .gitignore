@@ -1,0 +1,12 @@
+bin/
+dist/
+*.exe
+*.test
+*.out
+/watcher
+/tower
+coverage.out
+vendor/
+.env
+*.tmp
+.idea/
