@@ -33,6 +33,7 @@ type Scheduler struct {
 	state    *state.State
 	logger   *slog.Logger
 	puller   Puller
+	running  sync.Map
 }
 
 func New(deps Deps) *Scheduler {
@@ -67,6 +68,7 @@ func (s *Scheduler) Run(ctx context.Context) error {
 }
 
 func (s *Scheduler) checkAll(ctx context.Context, sem chan struct{}, wg *sync.WaitGroup) {
+	cycleID := fmt.Sprintf("cycle-%d", time.Now().UnixMilli())
 	for _, img := range s.cfg.Images {
 		wg.Add(1)
 		go func(img config.ImageConfig) {
@@ -74,7 +76,7 @@ func (s *Scheduler) checkAll(ctx context.Context, sem chan struct{}, wg *sync.Wa
 			select {
 			case sem <- struct{}{}:
 				defer func() { <-sem }()
-				s.processImage(ctx, img)
+				s.processImage(ctx, img, cycleID)
 			case <-ctx.Done():
 				return
 			}
@@ -82,8 +84,14 @@ func (s *Scheduler) checkAll(ctx context.Context, sem chan struct{}, wg *sync.Wa
 	}
 }
 
-func (s *Scheduler) processImage(ctx context.Context, img config.ImageConfig) {
+func (s *Scheduler) processImage(ctx context.Context, img config.ImageConfig, cycleID string) {
 	imageRef := fmt.Sprintf("%s:%s", img.Name, img.Tag)
+	if _, loaded := s.running.LoadOrStore(imageRef, struct{}{}); loaded {
+		s.logger.Debug("skipping image, previous run still active", "image", imageRef)
+		return
+	}
+	defer s.running.Delete(imageRef)
+
 	digest, err := s.resolver.Resolve(ctx, img)
 	if err != nil {
 		s.logger.Error("failed to resolve digest", "image", imageRef, "error", err)
