@@ -30,9 +30,11 @@ type Config struct {
 	CommandTimeout  time.Duration `yaml:"command_timeout"`
 	ShutdownTimeout time.Duration `yaml:"shutdown_timeout"`
 	StateFile       string        `yaml:"state_file"`
-	DockerConfigPath string       `yaml:"docker_config_path"`
-	InsecureSkipVerify bool       `yaml:"insecure_skip_verify"`
-	Images          []ImageConfig `yaml:"images"`
+	// DockerConfigPath is the path to Docker's config.json used for registry credentials.
+	DockerConfigPath string `yaml:"docker_config_path"`
+	// InsecureSkipVerify disables TLS certificate verification when contacting registries.
+	InsecureSkipVerify bool          `yaml:"insecure_skip_verify"`
+	Images             []ImageConfig `yaml:"images"`
 }
 
 // Load reads, parses, defaults, and validates the configuration at path.
@@ -55,6 +57,8 @@ func Load(path string) (*Config, error) {
 	return &cfg, nil
 }
 
+// setDefaults fills in any unset or zero-valued fields with Tower's built-in defaults,
+// expanding the "~/.docker/config.json" shorthand to an absolute path when possible.
 func setDefaults(cfg *Config) {
 	if cfg.LogLevel == "" {
 		cfg.LogLevel = "info"
@@ -86,8 +90,16 @@ func setDefaults(cfg *Config) {
 	if cfg.DockerConfigPath == "" {
 		cfg.DockerConfigPath = "~/.docker/config.json"
 	}
+	if cfg.DockerConfigPath == "~/.docker/config.json" {
+		if home, err := os.UserHomeDir(); err == nil {
+			cfg.DockerConfigPath = filepath.Join(home, ".docker", "config.json")
+		}
+	}
 }
 
+// validate enforces bounds on timing/concurrency settings, requires at least one
+// fully-specified image, rejects duplicate name:tag entries, and ensures the
+// state file's parent directory is writable.
 func validate(cfg *Config) error {
 	if cfg.CheckInterval < 5*time.Second {
 		return fmt.Errorf("check_interval must be >= 5s, got %s", cfg.CheckInterval)
@@ -123,5 +135,36 @@ func validate(cfg *Config) error {
 		seen[key] = true
 	}
 
+	if err := ensureWritableDir(filepath.Dir(cfg.StateFile)); err != nil {
+		return fmt.Errorf("state_file directory not writable: %w", err)
+	}
+
+	return nil
+}
+
+// ensureWritableDir verifies that dir exists (creating it if necessary), is a
+// directory, and is writable by creating and immediately removing a temporary
+// file. The current directory (".") and empty values are treated as always
+// writable and skipped, since they require no explicit check.
+func ensureWritableDir(dir string) error {
+	if dir == "" || dir == "." {
+		return nil
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	info, err := os.Stat(dir)
+	if err != nil {
+		return err
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("%s is not a directory", dir)
+	}
+	tmp, err := os.CreateTemp(dir, ".write-check-*")
+	if err != nil {
+		return fmt.Errorf("cannot write to directory: %w", err)
+	}
+	tmp.Close()
+	os.Remove(tmp.Name())
 	return nil
 }
