@@ -1,0 +1,52 @@
+# Log level: debug, info, warn, error
+log_level: info
+
+# Log format: text (concise, clean, human-readable) or json
+log_format: text
+
+# Write logs to a file with automatic rotation (optional).
+# If empty, logs are written to stdout only.
+log_file: ./tower.log
+
+# Maximum log file size in MB before a new file is created (default: 10 MB).
+log_max_size_mb: 10
+
+# Number of rotated backup files to keep (e.g. tower.log.1, tower.log.2).
+log_max_backups: 3
+
+# Interval between registry checks (minimum 5s).
+check_interval: 30s
+
+# Number of images checked concurrently.
+concurrency: 4
+
+# Maximum time allowed to run the deploy command after a pull.
+command_timeout: 2m
+
+# On shutdown (SIGTERM/SIGINT), the time given to in-flight work (pull and
+# deploy) to finish before the remaining work is cancelled. (default: 5m)
+shutdown_timeout: 5m
+
+# State file storing the digest of the last pulled images.
+# This prevents images from being needlessly pulled and restarted on program
+# restart.
+state_file: ./state.json
+
+# Path to the Docker config file used to read registry logins
+# (default: ~/.docker/config.json).
+docker_config_path: ~/.docker/config.json
+
+# If your internal GitLab registry uses a self-signed SSL certificate, set the
+# value below to true.
+insecure_skip_verify: false
+
+images:
+  # Example internal GitLab registry image
+  - name: gitlab.example.com:5050/mygroup/myproject/myapp
+    tag: latest
+    command: "docker compose up -d myapp"
+
+  # Another example image
+  - name: myuser/myapp
+    tag: latest
+    command: "docker compose up -d myapp"
