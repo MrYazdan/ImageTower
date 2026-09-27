@@ -82,3 +82,31 @@ After `docker login gitlab.example.com:5050`, credentials are automatically dete
 go test ./...
 go build ./...
 ```
+
+## CI/CD & Automated Releases
+
+Tower includes a production-ready GitHub Actions workflow (`.github/workflows/ci-cd.yaml`):
+
+### 1. Push to `main` (Continuous Integration & Edge Builds)
+- Runs unit tests and race detection (`go test -v -race ./...`).
+- Builds a container image and pushes to GitHub Container Registry (`ghcr.io`):
+  - `ghcr.io/<owner>/tower:edge`
+  - `ghcr.io/<owner>/tower:sha-<commit>`
+
+### 2. Git Tag Push (Automated Multi-Arch Releases & Changelog)
+When a semantic version tag is pushed (e.g. `v1.0.0`):
+1. **Tests**: Validates all tests on Go.
+2. **Multi-Arch Docker Images**: Builds for `linux/amd64` and `linux/arm64` via Docker Buildx and publishes:
+   - `ghcr.io/<owner>/tower:1.0.0`
+   - `ghcr.io/<owner>/tower:1.0`
+   - `ghcr.io/<owner>/tower:1`
+   - `ghcr.io/<owner>/tower:latest`
+3. **Automated Changelog**: Parses Gitmoji and conventional commits with `git-cliff` to generate release notes.
+4. **GitHub Release**: Publishes a new GitHub Release with changelog notes and assets attached.
+
+To release a new version:
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
