@@ -1,10 +1,10 @@
 # Tower
 
-[![CI Status](https://img.shields.io/github/actions/workflow/status/MrYazdan/ImageTower/ci-cd.yaml?branch=main&style=flat-square&logo=githubactions&logoColor=white)](https://github.com/MrYazdan/ImageTower/actions)
-[![Latest Release](https://img.shields.io/github/v/release/MrYazdan/ImageTower?style=flat-square&color=3b82f6&logo=github)](https://github.com/MrYazdan/ImageTower/releases)
-[![Go Version](https://img.shields.io/github/go-mod/go-version/MrYazdan/ImageTower?style=flat-square&logo=go)](https://golang.org)
-[![Coverage](.github/badges/coverage.svg)](https://github.com/MrYazdan/ImageTower/actions)
-[![Go Report Card](https://goreportcard.com/badge/github.com/MrYazdan/ImageTower)](https://goreportcard.com/report/github.com/MrYazdan/ImageTower)
+[![CI Status](https://img.shields.io/github/actions/workflow/status/MrYazdan/Tower/ci-cd.yaml?branch=main&style=flat-square&logo=githubactions&logoColor=white)](https://github.com/MrYazdan/Tower/actions)
+[![Latest Release](https://img.shields.io/github/v/release/MrYazdan/Tower?style=flat-square&color=3b82f6&logo=github)](https://github.com/MrYazdan/Tower/releases)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/MrYazdan/Tower?style=flat-square&logo=go)](https://golang.org)
+[![Coverage](.github/badges/coverage.svg)](https://github.com/MrYazdan/Tower/actions)
+[![Go Report Card](https://goreportcard.com/badge/github.com/MrYazdan/Tower)](https://goreportcard.com/report/github.com/MrYazdan/Tower)
 
 Lightweight, production-ready Docker image watcher and updater written in Go. Monitors container image registries (
 GitLab, Docker Hub, etc.) for digest changes, pulls updates using native Docker CLI and credentials, and executes
