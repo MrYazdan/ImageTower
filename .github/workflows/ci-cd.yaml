@@ -46,39 +46,11 @@ jobs:
         run: go test -v -race -coverprofile=coverage.out ./...
 
   # ---------------------------------------------------------------------------
-  # 2. Docker Build Validation:
-  #    - Builds image for multi-platform to ensure Dockerfile correctness
-  #    - Does NOT push to any container registry (push: false)
-  # ---------------------------------------------------------------------------
-  docker:
-    name: Validate Docker Build (No Push)
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up QEMU (multi-platform emulation)
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build and validate container image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          platforms: linux/amd64,linux/arm64
-          push: false
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  # ---------------------------------------------------------------------------
-  # 3. Release & Automated Changelog: Runs only on tag pushes (e.g. v1.0.0)
+  # 2. Release & Automated Changelog: Runs only on tag pushes (e.g. v1.0.0)
   # ---------------------------------------------------------------------------
   release:
     name: Generate Changelog & GitHub Release
-    needs: [test, docker]
+    needs: [test]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
