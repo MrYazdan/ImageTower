@@ -45,6 +45,31 @@ jobs:
       - name: Run unit tests with race detector
         run: go test -v -race -coverprofile=coverage.out ./...
 
+      - name: Generate & Update Coverage Badge
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        continue-on-error: true
+        run: |
+          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print substr($3, 1, length($3)-1)}')
+          VAL=$(echo "$COVERAGE" | cut -d'.' -f1)
+          if [ "$VAL" -ge 80 ]; then
+            COLOR="brightgreen"
+          elif [ "$VAL" -ge 65 ]; then
+            COLOR="green"
+          elif [ "$VAL" -ge 50 ]; then
+            COLOR="yellow"
+          else
+            COLOR="red"
+          fi
+          mkdir -p .github/badges
+          curl -s "https://img.shields.io/badge/coverage-${COVERAGE}%25-${COLOR}?style=flat-square" -o .github/badges/coverage.svg
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .github/badges/coverage.svg
+          if ! git diff --cached --quiet; then
+            git commit -m ":sparkles: chore(badge): update coverage badge to ${COVERAGE}% [skip ci]"
+            git push origin main
+          fi
+
   # ---------------------------------------------------------------------------
   # 2. Release & Automated Changelog: Runs only on tag pushes (e.g. v1.0.0)
   # ---------------------------------------------------------------------------
