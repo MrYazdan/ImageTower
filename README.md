@@ -87,22 +87,16 @@ go build ./...
 
 Tower includes a production-ready GitHub Actions workflow (`.github/workflows/ci-cd.yaml`):
 
-### 1. Push to `main` (Continuous Integration & Edge Builds)
+### 1. Push to `main` (Continuous Integration)
 - Runs unit tests and race detection (`go test -v -race ./...`).
-- Builds a container image and pushes to GitHub Container Registry (`ghcr.io`):
-  - `ghcr.io/<owner>/tower:edge`
-  - `ghcr.io/<owner>/tower:sha-<commit>`
+- Validates multi-architecture container builds (`linux/amd64` & `linux/arm64`) with Docker Buildx (**without pushing** to any container registry).
 
-### 2. Git Tag Push (Automated Multi-Arch Releases & Changelog)
+### 2. Git Tag Push (Automated Binary Releases & Changelog)
 When a semantic version tag is pushed (e.g. `v1.0.0`):
-1. **Tests**: Validates all tests on Go.
-2. **Multi-Arch Docker Images**: Builds for `linux/amd64` and `linux/arm64` via Docker Buildx and publishes:
-   - `ghcr.io/<owner>/tower:1.0.0`
-   - `ghcr.io/<owner>/tower:1.0`
-   - `ghcr.io/<owner>/tower:1`
-   - `ghcr.io/<owner>/tower:latest`
-3. **Automated Changelog**: Parses Gitmoji and conventional commits with `git-cliff` to generate release notes.
-4. **GitHub Release**: Publishes a new GitHub Release with changelog notes and assets attached.
+1. **Tests & Build Validation**: Validates all tests and ensures container builds succeed.
+2. **Binary Compilation**: Builds standalone, statically linked binaries for `linux/amd64` and `linux/arm64`.
+3. **Automated Changelog**: Parses Gitmoji and conventional commits with `git-cliff` to generate categorized release notes.
+4. **GitHub Release**: Publishes a new GitHub Release with the changelog, executable binaries, and example configuration.
 
 To release a new version:
 ```bash

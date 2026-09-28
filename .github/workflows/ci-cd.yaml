@@ -13,7 +13,6 @@ on:
 
 permissions:
   contents: write
-  packages: write
   pull-requests: read
 
 concurrency:
@@ -47,15 +46,14 @@ jobs:
         run: go test -v -race -coverprofile=coverage.out ./...
 
   # ---------------------------------------------------------------------------
-  # 2. Docker Build & Push:
-  #    - Push to main: builds image & pushes 'edge' and 'sha-...' tags to GHCR
-  #    - Push to tag (v*): builds multi-arch (linux/amd64, linux/arm64) & pushes semver tags
+  # 2. Docker Build Validation:
+  #    - Builds image for multi-platform to ensure Dockerfile correctness
+  #    - Does NOT push to any container registry (push: false)
   # ---------------------------------------------------------------------------
   docker:
-    name: Build & Push Docker Image
+    name: Validate Docker Build (No Push)
     needs: test
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -66,37 +64,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to GitHub Container Registry (GHCR)
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract Docker metadata (tags, labels)
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository }}
-          flavor: |
-            latest=auto
-          tags: |
-            # On main branch: tag as 'edge' and commit SHA for staging / dev testing
-            type=raw,value=edge,enable=${{ github.ref == 'refs/heads/main' }}
-            type=sha,prefix=sha-,enable=${{ github.ref == 'refs/heads/main' }}
-            # On tag (e.g. v1.2.3): tag semantic versions and 'latest'
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-
-      - name: Build and push container image
+      - name: Build and validate container image
         uses: docker/build-push-action@v6
         with:
           context: .
           platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          push: false
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -113,6 +86,19 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Set up Go (for binary releases)
+        uses: actions/setup-go@v5
+        with:
+          go-version: '>=1.23'
+          cache: true
+
+      - name: Build static binaries for Linux (amd64 / arm64)
+        run: |
+          mkdir -p dist
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o dist/tower-linux-amd64 ./cmd/tower
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o dist/tower-linux-arm64 ./cmd/tower
+          chmod +x dist/*
 
       - name: Generate Changelog with git-cliff
         id: git-cliff
@@ -131,7 +117,7 @@ jobs:
         env:
           OUTPUT: CHANGELOG.md
 
-      - name: Create GitHub Release with Changelog
+      - name: Create GitHub Release with Changelog & Binaries
         uses: softprops/action-gh-release@v2
         with:
           body_path: RELEASE_NOTES.md
@@ -139,6 +125,8 @@ jobs:
           draft: false
           prerelease: ${{ contains(github.ref, '-rc') || contains(github.ref, '-beta') || contains(github.ref, '-alpha') }}
           files: |
+            dist/tower-linux-amd64
+            dist/tower-linux-arm64
             CHANGELOG.md
             README.md
             config.example.yaml
